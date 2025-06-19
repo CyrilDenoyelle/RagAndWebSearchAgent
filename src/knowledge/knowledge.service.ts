@@ -12,7 +12,7 @@ export class KnowledgeService {
 
   constructor(private readonly configService: ConfigService) {
     this.embeddings = new OpenAIEmbeddings({
-      model: 'text-embedding-3-large',
+      model: this.configService.get<string>('EMBEDDING_MODEL'),
       apiKey: this.configService.get<string>('OPENAI_API_KEY'),
     });
     this.vectorStore = new MemoryVectorStore(this.embeddings);
