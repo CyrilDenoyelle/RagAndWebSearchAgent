@@ -4,6 +4,8 @@ import { RecursiveCharacterTextSplitter } from '@langchain/textsplitters';
 import { OpenAIEmbeddings } from '@langchain/openai';
 import { ConfigService } from '@nestjs/config';
 import { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import { CheerioWebBaseLoader } from '@langchain/community/document_loaders/web/cheerio';
+import { Document } from '@langchain/core/documents';
 
 @Injectable()
 export class KnowledgeService {
@@ -18,9 +20,28 @@ export class KnowledgeService {
     this.vectorStore = new MemoryVectorStore(this.embeddings);
   }
 
+  private async ingest(documents: Document[]) {
+    // Découper les documents en chunks
+    const textSplitter = new RecursiveCharacterTextSplitter({
+      chunkSize: 1000,
+      chunkOverlap: 200,
+    });
+
+    const allSplits = await textSplitter.splitDocuments(documents);
+    // Créer les embeddings pour les chunks
+    const embeddingsVectors = await this.embeddings.embedDocuments(
+      // docs.map((doc) => doc.pageContent),
+      allSplits.map((split) => split.pageContent),
+    );
+
+    await this.vectorStore.addVectors(embeddingsVectors, allSplits);
+
+    return allSplits;
+  }
+
   async ingestPdfFile(file: Express.Multer.File) {
     if (!file) {
-      throw new BadRequestException('Aucun fichier fourni');
+      return [];
     }
 
     try {
@@ -31,26 +52,42 @@ export class KnowledgeService {
       const loader = new PDFLoader(blob);
       const docs = await loader.load();
 
-      // Découper les documents en chunks
-      const textSplitter = new RecursiveCharacterTextSplitter({
-        chunkSize: 1000,
-        chunkOverlap: 200,
-      });
-
-      const allSplits = await textSplitter.splitDocuments(docs);
-      // Créer les embeddings pour les chunks
-      const embeddingsVectors = await this.embeddings.embedDocuments(
-        // docs.map((doc) => doc.pageContent),
-        allSplits.map((split) => split.pageContent),
-      );
-
-      await this.vectorStore.addVectors(embeddingsVectors, allSplits);
+      const allSplits = await this.ingest(docs);
 
       return {
         message: 'PDF ingéré avec succès',
         originalName: file.originalname,
         size: file.size,
         pages: docs.length,
+        chunks: allSplits.length,
+        documents: docs.map((doc, index) => ({
+          page: index + 1,
+          pageContent: doc.pageContent.substring(0, 200) + '...', // Aperçu du contenu
+          metadata: doc.metadata,
+        })),
+        // Chunks découpés pour traitement
+        splits: allSplits,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        `Erreur lors du traitement du PDF: ${error.message}`,
+      );
+    }
+  }
+
+  async ingestUrl(url: string) {
+    if (!url) {
+      return [];
+    }
+
+    try {
+      const docs = await new CheerioWebBaseLoader(url).load();
+
+      const allSplits = await this.ingest(docs);
+
+      return {
+        message: 'URL ingérée avec succès',
+        originalName: url,
         chunks: allSplits.length,
         documents: docs.map((doc, index) => ({
           page: index + 1,

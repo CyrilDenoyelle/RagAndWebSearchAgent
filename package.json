@@ -20,13 +20,16 @@
     "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
-    "@langchain/community": "^0.3.46",
-    "@langchain/openai": "^0.5.13",
+    "@langchain/community": "^0.3.47",
+    "@langchain/core": "^0.3.60",
+    "@langchain/openai": "^0.5.14",
     "@langchain/textsplitters": "^0.1.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^10.0.0",
     "@nestjs/platform-express": "^10.0.0",
+    "cheerio": "^1.1.0",
+    "langchain": "^0.3.29",
     "pdf-parse": "^1.1.1",
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1"

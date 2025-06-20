@@ -14,7 +14,7 @@ import { KnowledgeService } from './knowledge.service';
 export class KnowledgeController {
   constructor(private readonly knowledgeService: KnowledgeService) {}
 
-  @Post('upload-pdf')
+  @Post('upload')
   @UseInterceptors(
     FilesInterceptor('files', 10, {
       storage: memoryStorage(),
@@ -33,22 +33,33 @@ export class KnowledgeController {
       },
     }),
   )
-  async uploadPdfs(@UploadedFiles() files: Express.Multer.File[]) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('Aucun fichier fourni');
+  async upload(
+    @UploadedFiles() files: Express.Multer.File[],
+    @Body() body: { urls?: string[] },
+  ) {
+    const pdfResults = [];
+    const urlResults = [];
+
+    if (files?.length > 0) {
+      const r = await Promise.all(
+        files.map((file) => this.knowledgeService.ingestPdfFile(file)),
+      );
+      pdfResults.push(...r);
+    }
+    if (body.urls) {
+      const r = await Promise.all(
+        body.urls.map((url) => this.knowledgeService.ingestUrl(url)),
+      );
+      urlResults.push(...r);
     }
 
-    const results = await Promise.all(
-      files.map((file) => this.knowledgeService.ingestPdfFile(file)),
-    );
+    const results = [...pdfResults, ...urlResults];
 
     return {
-      message: `${files.length} PDF(s) traité(s) avec succès`,
-      totalFiles: files.length,
-      results: results.map((result, index) => ({
-        fileName: files[index].originalname,
-        ...result,
-      })),
+      message: `${results.length} Document(s) traité(s) avec succès`,
+      totalFiles: files?.length || 0,
+      totalUrls: body?.urls?.length || 0,
+      results: results,
     };
   }
 
