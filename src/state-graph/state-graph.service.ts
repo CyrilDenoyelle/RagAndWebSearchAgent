@@ -21,6 +21,7 @@ import { KnowledgeService } from 'src/knowledge/knowledge.service';
 import { ToolNode } from '@langchain/langgraph/prebuilt';
 import { HumanMessage } from '@langchain/core/messages';
 import { writeFileSync } from 'node:fs';
+import { ToolCall } from '@langchain/core/dist/messages/tool';
 
 // Types pour les node du graphe d'état
 type NodeNames = 'Coordinator' | 'Rag' | 'Tavily';
@@ -185,13 +186,32 @@ Do not try to answer the question yourself before querying the agents.`,
       )
       .addNode(
         'Tavily',
-        (state: typeof agentState.State, config?: RunnableConfig) =>
-          runAgentNode({
-            state,
+        (state: typeof agentState.State, config?: RunnableConfig) => {
+          // filtrer les messages de recherche RAG pour empêcher Tavily d'utiliser ces données au lieu de chercher sur le web
+          const messages = state.messages.filter((e) => {
+            if (
+              'tool_calls' in e &&
+              Array.isArray(e.tool_calls) &&
+              e.tool_calls.length > 0
+            )
+              return (
+                e.tool_calls.findIndex(
+                  (toolCall: ToolCall) => toolCall.name === 'rag_search',
+                ) === -1
+              );
+            else return !['Rag', 'rag_search'].includes(e.name);
+          });
+
+          return runAgentNode({
+            state: {
+              ...state,
+              messages,
+            },
             agent: this.tavilyAgent,
             name: 'Tavily',
             config,
-          }),
+          });
+        },
       )
       .addNode('call_tool', toolNode);
 
