@@ -113,7 +113,7 @@ export class KnowledgeService {
 
     const results = await this.vectorStore.similaritySearchVectorWithScore(
       embedding,
-      1,
+      3,
     );
 
     if (results.length === 0) {
