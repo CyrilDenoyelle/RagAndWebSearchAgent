@@ -109,8 +109,10 @@ export class KnowledgeService {
       throw new BadRequestException('La requête ne peut pas être vide');
     }
 
+    // Convertir la requête en vecteurs
     const embedding = await this.embeddings.embedQuery(query);
 
+    // recherche dans les données vectorisées
     const results = await this.vectorStore.similaritySearchVectorWithScore(
       embedding,
       3,
