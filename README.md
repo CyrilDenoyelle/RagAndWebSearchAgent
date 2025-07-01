@@ -65,5 +65,5 @@ Ce projet implémente StateGraph. L'architecture est composée de :
 
 ### API Endpoints
 
-- `POST /upload` : Upload de documents (PDF ou URL) en mémoire vive
-- `POST /invoke` : Soumission de requêtes textuelles
+- `POST /stateGraph/run` : Upload de documents (PDF ou URL) en mémoire vive
+- `POST /knoledge/upload` : Soumission de requêtes textuelles
